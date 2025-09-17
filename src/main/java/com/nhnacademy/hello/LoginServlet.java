@@ -1,5 +1,6 @@
 package com.nhnacademy.hello;
 
+import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletConfig;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
@@ -24,30 +25,20 @@ public class LoginServlet extends HttpServlet {
         initParamPwd = config.getInitParameter("pwd");
     }
 
+
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        // session이 있으면 가져오고 없으면 null
         HttpSession session = req.getSession(false);
-        if (Objects.isNull(session) || Objects.isNull(session.getAttribute("id"))) {
-            resp.sendRedirect("/login.html");
-        } else {
-            resp.setContentType("text/html");
-            resp.setCharacterEncoding("utf-8");
-
-            try (PrintWriter out = resp.getWriter()) {
-                out.println("<!DOCTYPE html>");
-                out.println("<html>");
-                out.println("<head>");
-                out.println("<meta charset='utf-8'>");
-                out.println("</head>");
-                out.println("<body>");
-                out.println("login success : id =" + session.getAttribute("id") + "<br/>");
-                out.println("<a href='/logout'>logout</a>");
-                out.println("</body>");
-                out.println("</html>");
+        if (session != null && session.getAttribute("id") != null) {
+            // 로그인되어 있으면 원래 요청 페이지로
+            String redirect = (String) session.getAttribute("redirectAfterLogin");
+            if (redirect != null) {
+                session.removeAttribute("redirectAfterLogin");
+                resp.sendRedirect(req.getContextPath() + redirect);
+                return;
             }
-
         }
+        resp.sendRedirect(req.getContextPath() + "/login.html");
     }
 
     @Override
@@ -60,12 +51,22 @@ public class LoginServlet extends HttpServlet {
             //session 있으면 가져오고 없으면 생성
             HttpSession session = req.getSession();
             session.setAttribute("id", id);
-            resp.sendRedirect("/login");
+
+            String originalUrl = (String) session.getAttribute("redirectAfterLogin");
+
+            if (originalUrl != null) {
+                session.removeAttribute("redirectAfterLogin");
+                resp.sendRedirect(req.getContextPath() + originalUrl);
+            } else {
+                resp.sendRedirect(req.getContextPath() + "/login.html");
+            }
+
         } else {
             log.error("아이디/패스워드가 일치하지 않습니다.");
             resp.sendRedirect("/login.html");
+//            RequestDispatcher rd = req.getRequestDispatcher("/login.html");
+//            rd.forward(req, resp);
+//            log.error("id:{}", id);
         }
-
     }
-
 }
